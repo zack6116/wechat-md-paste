@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>公众号 MD Paste — 把 Markdown 导入公众号草稿</title>
+    <meta name="description" content="在公众号图文编辑页导入 Markdown。图片自动上传到当前公众号，正文插到光标，不会自动发布。">
+    <link rel="icon" href="favicon.png">
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div class="title-row">
+          <h1>公众号 MD<br>Paste</h1>
+          <span class="badge">试用 14 天</span>
+        </div>
+        <p class="desc">在公众号图文编辑页把 Markdown 写进草稿。图片自动上传到当前公众号，正文插到光标，扩展不会替你点发表。</p>
+        <div class="actions">
+          <a class="primary" href="https://github.com/zack6116/wechat-md-paste">获取扩展</a>
+          <a class="secondary" href="#skill">下载 Skill</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>你能得到什么</h2>
+        <table>
+          <thead>
+            <tr><th>你做的事</th><th>结果</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>把 .md 拖进编辑页，或在正文 Ctrl+V</td><td>标题、列表、引用、链接、表格写入当前光标</td></tr>
+            <tr><td>图片写成 <code>![说明](images/01.png)</code></td><td>导入时自动上传到当前公众号</td></tr>
+            <tr><td>图片是公网 https 地址</td><td>允许后下载，再由编辑页上传</td></tr>
+            <tr><td>试用或 Pro 下选一次图片文件夹</td><td>之后按相对路径自动匹配</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card" id="skill">
+        <h2>让模型直接写出可导入的稿</h2>
+        <p>Skill 名字是 <code>wechat-mp-markdown</code>。它只生成这个扩展能导入的 Markdown，图片用自动上传的写法，不用 HTML，也不用 Obsidian 双链。</p>
+        <p class="label">Claude 和 Codex 安装</p>
+        <pre><code>npx skills add zack6116/wechat-mp-markdown -a claude-code -a codex -g -y</code></pre>
+        <p class="note">需要本机有 Node.js。这条命令会把 skill 装到 Claude Code 和 Codex。</p>
+        <div class="actions">
+          <a class="primary" href="wechat-mp-markdown.zip" download>下载 Skill 压缩包</a>
+          <a class="secondary" href="https://github.com/zack6116/wechat-mp-markdown">GitHub 仓库</a>
+        </div>
+        <p class="note">不用命令时，解压后把 <code>wechat-mp-markdown</code> 文件夹放到 Claude 的 <code>~/.claude/skills/</code>，或 Codex 的 <code>~/.agents/skills/</code>。</p>
+      </section>
+
+      <section class="card">
+        <h2>第一次使用</h2>
+        <ol>
+          <li>从 <a href="https://github.com/zack6116/wechat-md-paste">GitHub</a> 下载扩展，解压。</li>
+          <li>打开 <code>chrome://extensions</code>，打开开发者模式，选择「加载已解压的扩展程序」。</li>
+          <li>登录公众号并打开一篇图文草稿。成功标志：编辑区右上角出现「导入 Markdown」。</li>
+          <li>拖入 .md。有本地图片时，在扩展弹出的小窗口里选择图片所在文件夹。</li>
+        </ol>
+        <p class="note">还没有上架 Chrome 网上应用店。安装后有 14 天完整试用。</p>
+      </section>
+
+      <section class="card">
+        <h2>它怎样工作</h2>
+        <p>Markdown 在浏览器里转成带样式的 HTML。本地图片从你授权的文件夹读取，网络图片在你点允许后下载。上传由已经打开的公众号编辑页发出，扩展不读取 Cookie，也不把文章发到作者的服务器。</p>
+      </section>
+
+      <section class="card">
+        <h2>使用边界</h2>
+        <ul>
+          <li>只写入草稿，不会自动发布或群发。</li>
+          <li>试用结束后，免费版每篇最多 3 张图片，不能授权本地文件夹，文末保留一句提示。</li>
+          <li>Pro 为 ¥19/月或 ¥99/年。扩展里没有支付，Key 由作者发给你，并在本机校验。</li>
+          <li>支持 JPG、PNG、GIF、WebP。超过 8MB 会跳过。不接收 SVG、内网地址或带账号密码的网址。</li>
+          <li>公众号编辑器改版后，导入可能失败，直到更新扩展里的编辑器适配。</li>
+          <li>尚未选择开源许可证，版权保留。可以自己加载使用。</li>
+        </ul>
+      </section>
+
+      <footer>
+        <a href="https://github.com/zack6116/wechat-md-paste">扩展</a>
+        <a href="https://github.com/zack6116/wechat-mp-markdown">Skill</a>
+        <a href="https://x.com/kaiz_amm">联系作者</a>
+        <span>v1.0.0</span>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "公众号 MD Paste",
+  "version": "1.0.0",
+  "description": "在公众号图文编辑页导入 Markdown，图片在本地处理后写入草稿，不会自动发布。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://mp.weixin.qq.com/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "公众号 MD Paste",
+    "default_popup": "src/options/options.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mp.weixin.qq.com/*"],
+      "js": ["src/content/loader.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mp.weixin.qq.com/*"],
+      "js": ["src/page/main.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/panel/panel.html",
+        "src/content/bridge.js",
+        "src/lib/markdown.js",
+        "src/lib/constants.js",
+        "src/lib/channel.js"
+      ],
+      "matches": ["https://mp.weixin.qq.com/*"]
+    }
+  ]
+}

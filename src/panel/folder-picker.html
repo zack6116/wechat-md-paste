@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>选择图片文件夹</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        color: #1a1a1a;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      h1 { margin: 0 0 8px; font-size: 18px; }
+      p { margin: 0 0 16px; color: #555; font-size: 14px; line-height: 1.6; }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: #07c160;
+        color: #fff;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: default; }
+      #error { min-height: 1.4em; color: #c43b3b; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h1>选择图片文件夹</h1>
+    <p id="lead">公众号页面里不能直接打开系统文件夹。请在这个窗口选择 Markdown 引用的图片所在目录，选一次后会记住。</p>
+    <button id="pick" type="button">选择文件夹</button>
+    <p id="error"></p>
+    <script type="module" src="folder-picker.js"></script>
+  </body>
+</html>

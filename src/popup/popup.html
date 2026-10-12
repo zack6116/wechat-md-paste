@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>公众号 MD Paste</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <h1>公众号 MD Paste</h1>
+    <p class="plan" id="plan">正在读取…</p>
+    <ol>
+      <li>打开公众号图文编辑页</li>
+      <li>点右上角「导入 Markdown」</li>
+      <li>拖入 .md，或在正文 Ctrl+V</li>
+    </ol>
+    <p class="hint">支持图片自动上传。让模型用 wechat-mp-markdown 生成稿子。只写入草稿，不会自动发布。</p>
+    <button id="options" type="button">设置与激活</button>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>公众号 MD Paste</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main>
+      <header class="top">
+        <div class="title-row">
+          <h1>公众号 MD<br>Paste</h1>
+          <span class="badge trial" id="badge">试用 · 剩 14 天</span>
+        </div>
+        <p class="desc">一键把 Markdown 导入为公众号图文草稿 — 自动上传图片，正文插到光标，不会自动发布。</p>
+      </header>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="import">导入设置</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="member">会员</button>
+      </div>
+
+      <div id="panel-import">
+        <section class="card quota">
+          <p><b>当前档位：</b><span id="tier">Pro 试用中（剩 14 天）</span></p>
+          <p><b>每篇图片：</b><span id="images">无限</span></p>
+          <p><b>本地图片文件夹：</b><span id="folder">可用</span></p>
+          <p><b>文末提示：</b><span id="footer-state">无（试用）</span></p>
+          <button id="forget" class="text-btn" type="button">忘记已授权的文件夹</button>
+          <p class="status" id="forget-message"></p>
+        </section>
+
+        <section class="card license">
+          <p class="kicker">LICENSE KEY</p>
+          <input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="粘贴激活码（作者发给你的 Key）">
+          <div class="row">
+            <button id="save" type="button">激活</button>
+            <button id="clear" class="secondary" type="button">清除</button>
+          </div>
+          <p class="help">还没有激活码？<a href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者获取</a></p>
+          <p class="status" id="key-message"></p>
+          <a class="upgrade" href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
+          <p class="upgrade-note">¥19/月或 ¥99/年。扩展里不收款，Key 由作者发给你。</p>
+        </section>
+      </div>
+
+      <div id="panel-member" hidden>
+        <section class="card quota">
+          <p><b>试用：</b>安装后 14 天，图片不限，可授权本地文件夹，无文末提示。</p>
+          <p><b>免费版：</b>每篇最多 3 张图片，不能授权文件夹，文末保留一句提示。</p>
+          <p><b>Pro：</b>¥19/月或 ¥99/年。图片不限，可授权文件夹，无文末提示。Key 上标注最多 5 台设备。</p>
+          <p><b>校验：</b>Key 在本机校验。清除扩展数据会重新计算试用，设备数量不会联网核验。</p>
+        </section>
+        <a class="upgrade" href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
+      </div>
+
+      <footer>
+        <a href="https://wechat-markdown.coderfather.com" target="_blank" rel="noreferrer">主页</a>
+        <a href="#guide">使用指引</a>
+        <a href="#faq">常见问题</a>
+        <a href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者</a>
+        <span>v1.0.0</span>
+      </footer>
+
+      <section class="card extra" id="guide">
+        <h2>使用指引</h2>
+        <ol>
+          <li>打开公众号图文编辑页，点右上角「导入 Markdown」。</li>
+          <li>把 .md 拖进面板，或在正文 Ctrl+V。内容插到当前光标。</li>
+          <li>图片写成 <code>![说明](images/01.png)</code> 或公网 https 地址，导入时自动上传。</li>
+          <li>本地图片第一次选择所在文件夹。Skill 的安装和下载在 <a href="https://wechat-markdown.coderfather.com/#skill" target="_blank" rel="noreferrer">宣传页</a>。</li>
+        </ol>
+      </section>
+
+      <section class="card extra" id="faq">
+        <h2>常见问题</h2>
+        <p><b>会自动发布吗？</b>不会。扩展只写入草稿。</p>
+        <p><b>图片没传上去？</b>确认地址是相对路径或公网 https，并且这篇草稿仍然打开着。</p>
+        <p><b>试用天数不对？</b>清除扩展数据会重新计算 14 天。</p>
+      </section>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

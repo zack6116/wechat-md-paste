@@ -33,7 +33,7 @@ export function mountPanel(root, deps) {
         </header>
         <aside class="practice">
           <strong>最佳实践</strong>
-          <p>让模型使用 skill <code>wechat-mp-markdown</code> 生成稿子。支持图片自动上传：写成 <code>![说明](images/01.png)</code>，或使用公网 https 图片地址，导入时会传到当前公众号。本地图片第一次选择所在文件夹。<a href="https://wechat-markdown.coderfather.com/#skill" target="_blank" rel="noreferrer">下载 skill</a></p>
+          <p>让模型使用 skill <code>wechat-mp-markdown</code> 生成稿子。支持图片自动上传：写成 <code>![说明](images/01.png)</code>，或使用公网 https 图片地址，导入时会传到当前公众号。本地图片第一次选择所在文件夹。<a href="https://coderfather.com/wechat-markdown/#skill" target="_blank" rel="noreferrer">下载 skill</a></p>
         </aside>
         <p class="lead">把 .md 拖进这个面板或编辑页，也可以在正文里 Ctrl+V。内容插到当前光标，不会自动发布。</p>
         <label class="drop">选择 Markdown 文件<input class="file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden></label>

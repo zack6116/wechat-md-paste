@@ -44,7 +44,7 @@ flowchart LR
 
 frontmatter 只读取 `title` 和 `cover`。标题只在输入框为空时填入，最多 64 字。`cover` 或正文第一张成功导入的图片会作为封面候选；封面区已经有图时不覆盖。
 
-宣传页：<https://wechat-markdown.coderfather.com>。让模型直接写出可导入的稿子时，安装 skill：
+宣传页：<https://coderfather.com/wechat-markdown/>。让模型直接写出可导入的稿子时，安装 skill：
 
 ```bash
 npx skills add zack6116/wechat-mp-markdown -a claude-code -a codex -g -y

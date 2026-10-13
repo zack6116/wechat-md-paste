@@ -4,6 +4,8 @@ import { licenseFailureText, verifyLicenseKey } from '../lib/license.js';
 const keyInput = document.querySelector('#key');
 const keyMessage = document.querySelector('#key-message');
 const forgetMessage = document.querySelector('#forget-message');
+const diagMessage = document.querySelector('#diag-message');
+const lastImport = document.querySelector('#last-import');
 
 for (const tab of document.querySelectorAll('.tab')) {
   tab.addEventListener('click', () => selectTab(tab.dataset.tab));
@@ -33,7 +35,32 @@ document.querySelector('#forget').addEventListener('click', async () => {
   forgetMessage.textContent = '已记下。回到编辑页后，下次导入会重新选择文件夹。';
 });
 
+document.querySelector('#diag').addEventListener('click', diagnoseEditor);
+
 refresh();
+
+async function diagnoseEditor() {
+  diagMessage.textContent = '正在检查…';
+  const tabs = await chrome.tabs.query({ url: 'https://mp.weixin.qq.com/*' });
+  const edit = tabs.find((tab) => /appmsg_edit/i.test(tab.url || ''));
+  if (!edit?.id) {
+    diagMessage.textContent = '没有找到打开的图文编辑页标签。请先打开一篇草稿。';
+    return;
+  }
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: edit.id },
+    world: 'MAIN',
+    func: () => ({
+      href: location.href,
+      api: !!window.__MP_Editor_JSAPI__,
+      main: !!window.__WMP_MAIN__,
+      panel: !!document.getElementById('wmp-panel'),
+      mirrors: document.querySelectorAll('.ProseMirror').length,
+      boot: window.__WMP_BOOT_VERSION || '',
+    }),
+  });
+  diagMessage.textContent = `编辑页：ProseMirror ${result.mirrors} 个，官方 API ${result.api ? '有' : '无'}，扩展面板 ${result.panel ? '已挂载' : '未挂载'}，main ${result.main ? '已注入' : '未注入'}。`;
+}
 
 function selectTab(name) {
   for (const tab of document.querySelectorAll('.tab')) {
@@ -54,6 +81,13 @@ async function refresh() {
   }
   const entitlement = await resolveEntitlement(data, verifyLicenseKey);
   paint(entitlement);
+  const last = await chrome.storage.local.get(['lastImportLog', 'lastImportAt']);
+  if (last.lastImportLog) {
+    const when = last.lastImportAt ? new Date(last.lastImportAt).toLocaleString('zh-CN') : '';
+    lastImport.textContent = `最近一次导入（${when}）：${last.lastImportLog.split('\n').slice(-3).join(' / ')}`;
+  } else {
+    lastImport.textContent = '';
+  }
   if (data.licenseKey && !entitlement.license.valid) {
     keyMessage.textContent = licenseFailureText(entitlement.license.reason);
   }

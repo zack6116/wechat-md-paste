@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>隐私说明 — 公众号 MD Paste</title>
+    <meta name="description" content="公众号 MD Paste 不向作者的服务器发送文章、图片、Cookie 或后台 token。">
+    <link rel="icon" href="favicon.png">
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <h1>隐私说明</h1>
+        <p class="desc">公众号 MD Paste 在你已经打开的微信公众号图文编辑页里，把 Markdown 写入草稿。</p>
+      </header>
+
+      <section class="card">
+        <h2>收集什么</h2>
+        <p>扩展不设账号，不向作者的服务器发送文章、图片、Cookie 或后台 token。</p>
+        <p>本机会保存试用开始时间、你粘贴的 License Key、你授权过的图片文件夹句柄，以及「下次忘记这个文件夹」的标记。这些数据在浏览器的扩展存储和扩展自己的 IndexedDB 里。卸载或清除扩展数据后消失。</p>
+      </section>
+
+      <section class="card">
+        <h2>数据去哪</h2>
+        <table>
+          <thead>
+            <tr><th>数据</th><th>去向</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>正文</td><td>只在浏览器里转成 HTML，写入当前公众号草稿</td></tr>
+            <tr><td>网络图片</td><td>你点允许后，从图片自己的网址下载到浏览器，再由当前公众号编辑页上传</td></tr>
+            <tr><td>本地图片</td><td>从你点选的文件夹读取，再由当前公众号编辑页上传</td></tr>
+            <tr><td>License Key</td><td>只在本机校验，不上传</td></tr>
+          </tbody>
+        </table>
+        <p>上传使用公众号编辑页自己的素材接口。扩展不读取 Cookie 内容。</p>
+      </section>
+
+      <section class="card">
+        <h2>权限</h2>
+        <ul>
+          <li><code>storage</code>：保存上面列出的本机状态。</li>
+          <li><code>https://mp.weixin.qq.com/*</code>：在公众号后台显示导入按钮，并使用当前编辑页完成写入和图片上传。</li>
+          <li>可选的网站访问权限：只有导入网络图片且你点击允许时才会申请，用来下载这些图片。可以拒绝，拒绝后对应图片会跳过。</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>不会做的事</h2>
+        <ul>
+          <li>不出售个人数据</li>
+          <li>不把文章同步到作者的服务器</li>
+          <li>不自动点击发表或群发</li>
+          <li>不下载本机、内网或带账号密码的图片地址</li>
+        </ul>
+      </section>
+
+      <footer>
+        <a href="./">返回宣传页</a>
+        <a href="https://x.com/zack6116">联系作者</a>
+        <span>v1.0.3</span>
+      </footer>
+    </main>
+  </body>
+</html>

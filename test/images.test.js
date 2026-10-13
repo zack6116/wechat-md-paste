@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { indexRelativePaths, matchLocalPath, sniffImageMime } from '../src/lib/images.js';
-import { resolveImages } from '../src/lib/resolve-images.js';
+import { localLookupError, resolveImages } from '../src/lib/resolve-images.js';
 import { inspectRemoteImageUrl } from '../src/lib/urls.js';
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
@@ -12,6 +12,13 @@ test('matches relative image paths and reports ambiguous names', () => {
   assert.equal(matchLocalPath('hero.jpg', index).path, 'only/hero.jpg');
   assert.equal(matchLocalPath('cover.png', index).ambiguous, true);
   assert.equal(matchLocalPath('missing.png', index).missing, true);
+});
+
+test('names the missing local image instead of asking for another grant', () => {
+  const index = indexRelativePaths(['images/01.png']);
+  assert.equal(localLookupError('images/01.png', index), null);
+  assert.match(localLookupError('images/02.png', index), /02\.png/);
+  assert.match(localLookupError('images/02.png', indexRelativePaths([])), /没有图片文件/);
 });
 
 test('rejects private and credentialed image urls', () => {

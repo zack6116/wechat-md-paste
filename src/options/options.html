@@ -29,6 +29,9 @@
           <p><b>文末提示：</b><span id="footer-state">无（试用）</span></p>
           <button id="forget" class="text-btn" type="button">忘记已授权的文件夹</button>
           <p class="status" id="forget-message"></p>
+          <button id="diag" class="text-btn" type="button">检查图文编辑页</button>
+          <p class="status" id="diag-message"></p>
+          <p class="status" id="last-import"></p>
         </section>
 
         <section class="card license">
@@ -38,9 +41,9 @@
             <button id="save" type="button">激活</button>
             <button id="clear" class="secondary" type="button">清除</button>
           </div>
-          <p class="help">还没有激活码？<a href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者获取</a></p>
+          <p class="help">还没有激活码？<a href="https://x.com/zack6116" target="_blank" rel="noreferrer">联系作者获取</a></p>
           <p class="status" id="key-message"></p>
-          <a class="upgrade" href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
+          <a class="upgrade" href="https://x.com/zack6116" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
           <p class="upgrade-note">¥19/月或 ¥99/年。扩展里不收款，Key 由作者发给你。</p>
         </section>
       </div>
@@ -52,31 +55,32 @@
           <p><b>Pro：</b>¥19/月或 ¥99/年。图片不限，可授权文件夹，无文末提示。Key 上标注最多 5 台设备。</p>
           <p><b>校验：</b>Key 在本机校验。清除扩展数据会重新计算试用，设备数量不会联网核验。</p>
         </section>
-        <a class="upgrade" href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
+        <a class="upgrade" href="https://x.com/zack6116" target="_blank" rel="noreferrer">联系作者升级 Pro</a>
       </div>
 
       <footer>
-        <a href="https://coderfather.com/wechat-markdown/" target="_blank" rel="noreferrer">主页</a>
+        <a href="https://wechat-markdown.coderfather.com/" target="_blank" rel="noreferrer">主页</a>
         <a href="#guide">使用指引</a>
         <a href="#faq">常见问题</a>
-        <a href="https://x.com/kaiz_amm" target="_blank" rel="noreferrer">联系作者</a>
-        <span>v1.0.0</span>
+        <a href="https://x.com/zack6116" target="_blank" rel="noreferrer">联系作者</a>
+        <span>v1.0.11</span>
       </footer>
 
       <section class="card extra" id="guide">
         <h2>使用指引</h2>
         <ol>
-          <li>打开公众号图文编辑页，点右上角「导入 Markdown」。</li>
-          <li>把 .md 拖进面板，或在正文 Ctrl+V。内容插到当前光标。</li>
-          <li>图片写成 <code>![说明](images/01.png)</code> 或公网 https 地址，导入时自动上传。</li>
-          <li>本地图片第一次选择所在文件夹。Skill 的安装和下载在 <a href="https://coderfather.com/wechat-markdown/#skill" target="_blank" rel="noreferrer">宣传页</a>。</li>
+          <li>打开公众号<strong>文章</strong>图文编辑页（不是贴图），点「创作」旁边的「导入 Markdown」。</li>
+          <li>把文章目录拖进面板。目录里要有 .md 和 images。只上传 Markdown 时不读取本地图片。</li>
+          <li>图片写成 <code>![说明](images/01.png)</code> 或公网 https 地址。本地图片从这次上传的目录里取。</li>
+          <li>也可以在正文 Ctrl+V。Skill 的安装和下载在 <a href="https://wechat-markdown.coderfather.com/#skill" target="_blank" rel="noreferrer">宣传页</a>。</li>
         </ol>
       </section>
 
       <section class="card extra" id="faq">
         <h2>常见问题</h2>
+        <p><b>贴图能用吗？</b>不能。只支持「新的创作 → 文章」图文，不支持贴图（createType=8）。</p>
         <p><b>会自动发布吗？</b>不会。扩展只写入草稿。</p>
-        <p><b>图片没传上去？</b>确认地址是相对路径或公网 https，并且这篇草稿仍然打开着。</p>
+        <p><b>图片没传上去？</b>本地图片要和 Markdown 在同一个目录里一起上传。只上传 Markdown 时不会读以前选过的文件夹。公网 https 图片仍会上传。请确认这篇草稿仍然打开着。</p>
         <p><b>试用天数不对？</b>清除扩展数据会重新计算 14 天。</p>
       </section>
     </main>

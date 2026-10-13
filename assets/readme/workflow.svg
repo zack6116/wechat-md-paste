@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="260" viewBox="0 0 1200 260"
+     role="img" aria-labelledby="title desc">
+  <title id="title">从 Markdown 到公众号草稿</title>
+  <desc id="desc">四步：拖入或粘贴 Markdown，在浏览器里解析成带样式的 HTML，图片交给当前公众号编辑页上传，插入光标后由你自己发表。</desc>
+
+  <rect width="1200" height="260" rx="28" fill="#f3f7f4"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+    <g id="step-source">
+      <rect x="46" y="56" width="250" height="148" rx="16" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+      <text x="70" y="104" fill="#078d46" font-size="22" font-weight="700">01</text>
+      <text x="70" y="146" fill="#1a1a1a" font-size="24" font-weight="700">拖入或粘贴</text>
+      <text x="70" y="176" fill="#6b6b70" font-size="18">.md 或 Ctrl+V</text>
+    </g>
+
+    <g id="step-parse">
+      <rect x="332" y="56" width="250" height="148" rx="16" fill="#ffffff" stroke="#d7e8dc" stroke-width="1"/>
+      <text x="356" y="104" fill="#078d46" font-size="22" font-weight="700">02</text>
+      <text x="356" y="146" fill="#1a1a1a" font-size="24" font-weight="700">浏览器里解析</text>
+      <text x="356" y="176" fill="#6b6b70" font-size="18">得到带样式 HTML</text>
+    </g>
+
+    <g id="step-upload">
+      <rect x="618" y="56" width="250" height="148" rx="16" fill="#ffffff" stroke="#d7e8dc" stroke-width="1"/>
+      <text x="642" y="104" fill="#078d46" font-size="22" font-weight="700">03</text>
+      <text x="642" y="146" fill="#1a1a1a" font-size="24" font-weight="700">交给当前编辑页</text>
+      <text x="642" y="176" fill="#6b6b70" font-size="18">上传文中的图片</text>
+    </g>
+
+    <g id="step-draft">
+      <rect x="904" y="56" width="250" height="148" rx="16" fill="#ffffff" stroke="#d7e8dc" stroke-width="1"/>
+      <text x="928" y="104" fill="#078d46" font-size="22" font-weight="700">04</text>
+      <rect x="928" y="124" width="4" height="26" rx="1" fill="#07c160"/>
+      <text x="944" y="146" fill="#1a1a1a" font-size="24" font-weight="700">插入草稿光标</text>
+      <text x="928" y="176" fill="#6b6b70" font-size="18">发表仍由你来点</text>
+    </g>
+
+    <g id="arrows" fill="none" stroke="#07c160" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M304 130 H322"/>
+      <path d="M316 124 L326 130 L316 136"/>
+      <path d="M590 130 H608"/>
+      <path d="M602 124 L612 130 L602 136"/>
+      <path d="M876 130 H894"/>
+      <path d="M888 124 L898 130 L888 136"/>
+    </g>
+  </g>
+</svg>

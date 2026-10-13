@@ -1,7 +1,13 @@
+import { describeBundle, normalizeRelative, relativeToMarkdown } from '../lib/bundle.js';
 import { EDITOR_SOURCE, isEditorResponse } from '../lib/channel.js';
+import { filesFromDataTransfer } from '../lib/drop-files.js';
 import { looksLikeMarkdown } from '../lib/markdown.js';
+import { placePanel } from '../lib/placement.js';
 
 let mounted = false;
+let panelMode = 'collapsed';
+let toolbarCache = { anchor: null, controls: [] };
+const CREATE_LABEL = /^[+＋]?(新的)?创作$/;
 
 export function start() {
   const watch = setInterval(async () => {
@@ -27,8 +33,9 @@ function mount() {
   iframe.src = chrome.runtime.getURL('src/panel/panel.html');
   iframe.setAttribute('allow', 'clipboard-read');
   iframe.setAttribute('scrolling', 'no');
-  applySize(iframe, 'collapsed');
   document.documentElement.append(iframe);
+  applySize(iframe, 'collapsed');
+  watchLayout(iframe);
 
   const overlay = document.createElement('div');
   overlay.textContent = '松开以导入 Markdown';
@@ -96,16 +103,34 @@ function mount() {
     if (!dragDepth) overlay.style.display = 'none';
   }
 
-  function onDrop(event) {
+  async function onDrop(event) {
     dragDepth = 0;
     overlay.style.display = 'none';
-    const files = [...(event.dataTransfer?.files || [])];
-    const markdown = files.filter((file) => /\.(md|markdown)$/i.test(file.name) || file.type === 'text/markdown');
-    if (!markdown.length) return;
+    if (!hasFiles(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    const notice = markdown.length > 1 ? '批量导入尚未提供，这次只导入了第一个文件。' : '';
-    markdown[0].text().then((text) => port.postMessage({ type: 'import-text', text, notice }));
+    try {
+      const entries = await filesFromDataTransfer(event.dataTransfer);
+      const described = describeBundle(entries);
+      if (described.error) {
+        port.postMessage({ type: 'import-text', error: described.error });
+        return;
+      }
+      const markdown = entries.find((entry) => normalizeRelative(entry.relativePath) === described.markdownPath);
+      const text = await markdown.file.text();
+      let files = null;
+      if (described.mode === 'directory') {
+        files = [];
+        for (const entry of entries) {
+          const rel = relativeToMarkdown(described.base, entry.relativePath);
+          if (!rel || !/\.(png|jpe?g|gif|webp)$/i.test(rel)) continue;
+          files.push({ relativePath: rel, name: entry.name, bytes: await entry.file.arrayBuffer() });
+        }
+      }
+      port.postMessage({ type: 'import-text', text, notice: described.notice || '', files });
+    } catch {
+      port.postMessage({ type: 'import-text', error: '没有读到拖入的目录' });
+    }
   }
 
   function onPaste(event) {
@@ -130,6 +155,27 @@ function mount() {
   async function onPanelMessage(message) {
     if (message?.type === 'resize') {
       applySize(iframe, message.mode);
+      return;
+    }
+    if (message?.type === 'focus-body') {
+      const result = await callMain('focus-body', {}, 45000);
+      port.postMessage({
+        type: 'focus-body-result',
+        requestId: message.requestId,
+        ok: !!result.ok,
+        error: result.ok ? '' : result.error || '无法聚焦正文',
+      });
+      return;
+    }
+    if (message?.type === 'ping-editor') {
+      const result = await callMain('ping');
+      port.postMessage({
+        type: 'ping-editor-result',
+        requestId: message.requestId,
+        ok: !!result.ok,
+        payload: result.payload || {},
+        error: result.ok ? '' : result.error || '编辑器没有响应',
+      });
       return;
     }
     if (message?.type === 'upload-image') {
@@ -169,22 +215,193 @@ function mount() {
   }
 }
 
-function applySize(iframe, mode) {
-  const expanded = mode === 'expanded';
+function watchLayout(iframe) {
+  let frame = 0;
+  let needsScan = true;
+  const schedule = (rescan) => {
+    if (rescan) needsScan = true;
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const scan = needsScan;
+      needsScan = false;
+      applySize(iframe, undefined, scan);
+    });
+  };
+  window.addEventListener('resize', () => schedule(false));
+  window.addEventListener('scroll', () => schedule(false), true);
+  const observer = new MutationObserver((records) => {
+    if (records.every((record) => record.target === iframe || iframe.contains(record.target))) return;
+    schedule(true);
+  });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  const settle = setInterval(() => schedule(true), 1000);
+  setTimeout(() => clearInterval(settle), 8000);
+}
+
+function applySize(iframe, mode, rescan = true) {
+  if (mode) panelMode = mode;
+  const measured = measureToolbar(rescan);
+  const placed = placePanel({
+    mode: panelMode,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    anchor: measured.anchor,
+    obstacles: measured.obstacles,
+  });
+  const expanded = panelMode === 'expanded' || panelMode === 'log';
   iframe.style.cssText = [
     'position:fixed',
-    'top:80px',
-    'right:24px',
+    `top:${Math.round(placed.top)}px`,
+    `right:${Math.round(placed.right)}px`,
     'border:0',
     'overflow:hidden',
     'z-index:2147483646',
     `border-radius:${expanded ? '16px' : '999px'}`,
     'background:transparent',
     'color-scheme:light',
-    `width:${expanded ? 'min(380px, calc(100vw - 48px))' : '208px'}`,
-    `height:${expanded ? 'min(640px, calc(100vh - 104px))' : '56px'}`,
-    `box-shadow:${expanded ? '0 12px 40px rgba(0,0,0,.16)' : '0 10px 28px rgba(7,193,96,.45), 0 2px 8px rgba(0,0,0,.16)'}`,
+    'visibility:visible',
+    `width:${Math.round(placed.width)}px`,
+    `height:${Math.round(placed.height)}px`,
+    `box-shadow:${expanded ? '0 12px 40px rgba(0,0,0,.16)' : '0 4px 14px rgba(7,193,96,.35)'}`,
   ].join(';');
+}
+
+function measureToolbar(rescan) {
+  if (!rescan && toolbarCache.controls.length) {
+    const controls = toolbarCache.controls.filter((element) => element.isConnected);
+    const anchorEl = toolbarCache.anchor?.isConnected ? toolbarCache.anchor : null;
+    return {
+      anchor: anchorEl ? viewRect(anchorEl) : null,
+      obstacles: controls.filter((element) => element !== anchorEl).map(viewRect),
+    };
+  }
+  const controls = listControls();
+  const anchorEl = pickCreateButton(controls);
+  toolbarCache = { anchor: anchorEl, controls };
+  return {
+    anchor: anchorEl ? viewRect(anchorEl) : null,
+    obstacles: controls.filter((element) => element !== anchorEl).map(viewRect),
+  };
+}
+
+function pickCreateButton(controls) {
+  const candidates = controls.filter((element) => CREATE_LABEL.test(labelOf(element)));
+  for (const host of findCreateHosts()) candidates.push(host);
+  const matches = candidates
+    .map((element) => ({ element, rect: viewRect(element) }))
+    .filter(({ rect }) => rect.top < 220 && rect.left > window.innerWidth * 0.35 && rect.width >= 8 && rect.height >= 8 && rect.width <= 240 && rect.height <= 80);
+  matches.sort((a, b) => b.rect.right - a.rect.right || a.rect.top - b.rect.top);
+  return matches[0]?.element || null;
+}
+
+function findCreateHosts() {
+  const hosts = [];
+  for (const doc of sameOriginDocs({ skipEditorBody: true })) {
+    if (!doc.body) continue;
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+      const text = node.nodeValue.replace(/\s+/g, '');
+        if (CREATE_LABEL.test(text) && node.parentElement) {
+        const host = clickableHost(node.parentElement);
+        if (host && !host.closest?.('.ProseMirror, #ueditor_0, #js_editor, #js_editor_area, .rich_media_content')) hosts.push(host);
+      }
+      node = walker.nextNode();
+    }
+  }
+  return hosts;
+}
+
+function clickableHost(element) {
+  let current = element;
+  while (current && current !== current.ownerDocument.documentElement) {
+    const rect = current.getBoundingClientRect();
+    if (rect.width > 280 || rect.height > 100) break;
+    if (rect.width >= 8 && rect.height >= 8 && isInteractive(current)) return current;
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function isInteractive(element) {
+  const tag = element.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || element.getAttribute('role') === 'button') return true;
+  const className = typeof element.className === 'string' ? element.className : '';
+  if (/btn|creation|create/i.test(className)) return true;
+  return CREATE_LABEL.test(labelOf(element)) && getComputedStyle(element).cursor === 'pointer';
+}
+
+function listControls() {
+  const nodes = [];
+  for (const doc of sameOriginDocs()) {
+    nodes.push(...doc.querySelectorAll('button, a, [role="button"], .weui-desktop-btn, #js_send, #js_preview, #js_submit'));
+  }
+  return nodes.filter((element) => {
+    if (element.closest?.('#wmp-panel, .ProseMirror, #ueditor_0, #js_editor, #js_editor_area, .rich_media_content')) return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.width < 8 || rect.height < 8 || rect.width > 280 || rect.height > 80) return false;
+    const style = getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  });
+}
+
+function sameOriginDocs({ skipEditorBody = false } = {}) {
+  const docs = [document];
+  for (const frame of document.querySelectorAll('iframe')) {
+    if (frame.id === 'wmp-panel') continue;
+    if (skipEditorBody && /ueditor|js_editor/i.test(`${frame.id} ${frame.className}`)) continue;
+    try {
+      if (frame.contentDocument) docs.push(frame.contentDocument);
+    } catch {
+      // Cross-origin frames are not part of the admin toolbar.
+    }
+  }
+  return docs;
+}
+
+function labelOf(element) {
+  return (element.textContent || '').replace(/\s+/g, '');
+}
+
+function viewRect(element) {
+  const rect = element.getBoundingClientRect();
+  let x = 0;
+  let y = 0;
+  let doc = element.ownerDocument;
+  while (doc && doc !== document) {
+    const frame = frameFor(doc);
+    if (!frame) break;
+    const host = frame.getBoundingClientRect();
+    x += host.left;
+    y += host.top;
+    doc = frame.ownerDocument;
+  }
+  return {
+    top: rect.top + y,
+    left: rect.left + x,
+    right: rect.right + x,
+    bottom: rect.bottom + y,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function frameFor(doc) {
+  const parent = doc.defaultView?.parent?.document;
+  if (!parent) return null;
+  for (const frame of parent.querySelectorAll('iframe')) {
+    try {
+      if (frame.contentDocument === doc) return frame;
+    } catch {
+      // Ignore frames the page cannot read.
+    }
+  }
+  return null;
 }
 
 function hasFiles(event) {

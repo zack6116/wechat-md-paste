@@ -1,10 +1,14 @@
 {
   "name": "wechat-md-paste",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.11",
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "e2e": "bash dev/run-e2e.sh",
+    "live:log-server": "node dev/import-log-server.mjs",
+    "live:wait": "node dev/wait-live-import.mjs",
+    "pack": "bash dev/pack-extension.sh",
     "license": "node scripts/issue-license.mjs"
   },
   "engines": {

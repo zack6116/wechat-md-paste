@@ -34,7 +34,7 @@ export function selectImages({ bodyImages, coverSrc, entitlement }) {
       continue;
     }
     if (classified.kind === 'local' && !entitlement.allowLocalFolder) {
-      skipped.push({ ...item, reason: '免费版不支持本地图片，试用或 Pro 可以授权文件夹' });
+      skipped.push({ ...item, reason: '免费版不支持本地图片，试用或 Pro 可以把图片和 Markdown 放在同一目录里上传' });
       continue;
     }
     if (accepted.length >= entitlement.imageLimit) {

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>Mock 公众号图文编辑</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; }
+      .ProseMirror { min-height: 80px; border: 1px solid #ddd; padding: 12px; margin: 12px 0; }
+      #title-editor { min-height: 40px; }
+      #body-editor { min-height: 320px; }
+    </style>
+  </head>
+  <body>
+    <button type="button" id="js_send">保存</button>
+    <button type="button">预览</button>
+    <button type="button">新的创作</button>
+    <h2>标题</h2>
+    <div id="title-editor" class="ProseMirror" contenteditable="true" data-placeholder="请在这里输入标题"></div>
+    <h2>正文</h2>
+    <div id="body-editor" class="ProseMirror" contenteditable="true" data-placeholder="从这里开始写正文"></div>
+    <script>
+      window.__MP_Editor_JSAPI__ = {
+        invoke({ apiName, apiParam, sucCb, errCb }) {
+          if (apiName === 'mp_editor_get_isready') {
+            sucCb({ isReady: true, isNew: true });
+            return;
+          }
+          if (apiName === 'mp_editor_insert_html') {
+            document.getElementById('body-editor').insertAdjacentHTML('beforeend', apiParam.html || '');
+            sucCb({});
+            return;
+          }
+          if (apiName === 'mp_editor_get_content') {
+            sucCb({ content: document.getElementById('body-editor').innerHTML });
+            return;
+          }
+          if (apiName === 'mp_editor_set_content') {
+            document.getElementById('body-editor').innerHTML = apiParam.content || '';
+            sucCb({});
+            return;
+          }
+          errCb({ err_msg: `unsupported ${apiName}` });
+        },
+      };
+    </script>
+  </body>
+</html>

@@ -55,20 +55,21 @@
         <ol>
           <li>从 <a href="https://github.com/zack6116/wechat-md-paste">GitHub</a> 下载扩展，解压。</li>
           <li>打开 <code>chrome://extensions</code>，打开开发者模式，选择「加载已解压的扩展程序」。</li>
-          <li>登录公众号并打开一篇图文草稿。成功标志：编辑区右上角出现「导入 Markdown」。</li>
-          <li>拖入 .md。有本地图片时，在扩展弹出的小窗口里选择图片所在文件夹。</li>
+          <li>登录公众号并打开一篇图文草稿。成功标志：「导入 Markdown」出现在「创作」或预览、保存按钮旁边，不挡住原来的按钮。</li>
+          <li>拖入文章目录。目录里要有 Markdown 和 images。只拖入 .md 时不读取本地图片。</li>
         </ol>
         <p class="note">还没有上架 Chrome 网上应用店。安装后有 14 天完整试用。</p>
       </section>
 
       <section class="card">
         <h2>它怎样工作</h2>
-        <p>Markdown 在浏览器里转成带样式的 HTML。本地图片从你授权的文件夹读取，网络图片在你点允许后下载。上传由已经打开的公众号编辑页发出，扩展不读取 Cookie，也不把文章发到作者的服务器。</p>
+        <p>Markdown 在浏览器里转成带样式的 HTML。本地图片从这次上传的文章目录读取，网络图片在你点允许后下载。上传由已经打开的公众号编辑页发出，扩展不读取 Cookie，也不把文章发到作者的服务器。</p>
       </section>
 
       <section class="card">
         <h2>使用边界</h2>
         <ul>
+          <li>只支持<strong>文章</strong>图文编辑，不支持贴图。</li>
           <li>只写入草稿，不会自动发布或群发。</li>
           <li>试用结束后，免费版每篇最多 3 张图片，不能授权本地文件夹，文末保留一句提示。</li>
           <li>Pro 为 ¥19/月或 ¥99/年。扩展里没有支付，Key 由作者发给你，并在本机校验。</li>
@@ -81,8 +82,9 @@
       <footer>
         <a href="https://github.com/zack6116/wechat-md-paste">扩展</a>
         <a href="https://github.com/zack6116/wechat-mp-markdown">Skill</a>
-        <a href="https://x.com/kaiz_amm">联系作者</a>
-        <span>v1.0.0</span>
+        <a href="https://x.com/zack6116">联系作者</a>
+        <a href="privacy.html">隐私说明</a>
+        <span>v1.0.11</span>
       </footer>
     </main>
   </body>

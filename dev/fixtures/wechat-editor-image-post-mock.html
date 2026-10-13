@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>Mock 贴图编辑 createType=8</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; }
+      .ProseMirror { border: 1px solid #ddd; padding: 12px; margin: 12px 0; }
+      #caption-editor { min-height: 48px; width: 180px; }
+      #body-editor { min-height: 360px; }
+    </style>
+  </head>
+  <body>
+    <button type="button" id="js_send">保存</button>
+    <button type="button">预览</button>
+    <div id="js_cover_area" class="js_cover_area_inner">
+      <img src="https://mmbiz.qpic.cn/mock/existing-cover.png" alt="">
+    </div>
+    <div id="title-editor" class="ProseMirror" contenteditable="true" data-placeholder="请在这里输入标题"></div>
+    <div id="desc-editor" class="ProseMirror" contenteditable="true" data-placeholder="填写描述信息，让大家了解更多内容"></div>
+    <div id="body-editor" class="ProseMirror" contenteditable="true" data-placeholder="隐藏正文区" hidden></div>
+    <div id="iframe-stack"></div>
+    <script>
+      const stack = document.getElementById('iframe-stack');
+      let parent = stack;
+      for (let i = 0; i < 24; i += 1) {
+        const frame = document.createElement('iframe');
+        frame.style.display = 'none';
+        parent.appendChild(frame);
+        const doc = frame.contentDocument;
+        doc.open();
+        doc.write('<!doctype html><html><body><iframe></iframe></body></html>');
+        doc.close();
+        parent = doc.body.firstChild;
+      }
+      window.__MP_Editor_JSAPI__ = {
+        invoke({ apiName, apiParam, sucCb, errCb }) {
+          if (apiName === 'mp_editor_get_isready') {
+            sucCb({ isReady: true, isNew: true });
+            return;
+          }
+          if (apiName === 'mp_editor_insert_html') {
+            document.getElementById('body-editor').insertAdjacentHTML('beforeend', apiParam.html || '');
+            sucCb({});
+            return;
+          }
+          if (apiName === 'mp_editor_get_content') {
+            sucCb({ content: document.getElementById('body-editor').innerHTML });
+            return;
+          }
+          if (apiName === 'mp_editor_set_content') {
+            document.getElementById('body-editor').innerHTML = apiParam.content || '';
+            sucCb({});
+            return;
+          }
+          if (apiName === 'mp_editor_change_cover') {
+            errCb({ err_msg: 'unsupported on mock image post' });
+            return;
+          }
+          errCb({ err_msg: `unsupported ${apiName}` });
+        },
+      };
+    </script>
+  </body>
+</html>

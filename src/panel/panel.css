@@ -32,9 +32,10 @@ button, input { font: inherit; }
   background: #07c160;
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   letter-spacing: 0;
+  white-space: nowrap;
   cursor: pointer;
   appearance: none;
 }
@@ -140,6 +141,17 @@ h1 {
   cursor: pointer;
 }
 
+.md-only {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: #576b63;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .actions { display: flex; flex-direction: column; gap: 8px; }
 
 .primary, .secondary {
@@ -153,13 +165,46 @@ h1 {
 .primary { background: #07c160; color: #fff; }
 .secondary { background: #f3f3f3; color: #222; }
 
+.log-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.log-title {
+  margin: 0;
+  color: #444;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .log {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 8px 10px;
   overflow: auto;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  border: 1px solid #ececf1;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.shell.focus-log .practice,
+.shell.focus-log .lead,
+.shell.focus-log .drop,
+.shell.focus-log .md-only {
+  display: none;
+}
+
+.shell.focus-log .log-wrap {
+  min-height: 220px;
+}
+
+.shell.focus-log .log li {
+  font-size: 13px;
 }
 
 .log li {
@@ -167,6 +212,11 @@ h1 {
   border-bottom: 1px solid #f3f3f3;
   font-size: 13px;
   line-height: 1.5;
+  word-break: break-word;
+}
+
+.log li:last-child {
+  border-bottom: 0;
 }
 
 .log li.error { color: #c43b3b; }

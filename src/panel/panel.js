@@ -1,5 +1,7 @@
 import { buildArticle, prepareImport } from '../lib/article.js';
+import { describeBundle, folderFromEntries, normalizeRelative, omitLocalImages } from '../lib/bundle.js';
 import { base64ToBytes, bytesToBase64 } from '../lib/bytes.js';
+import { entriesFromFileList, filesFromDataTransfer } from '../lib/drop-files.js';
 import { formatPlan, resolveEntitlement } from '../lib/entitlement.js';
 import { indexRelativePaths, matchLocalPath } from '../lib/images.js';
 import { verifyLicenseKey } from '../lib/license.js';
@@ -15,7 +17,6 @@ export function mountPanel(root, deps) {
     lines: [],
     phase: 'idle',
     prompt: '',
-    folderPrompt: false,
   };
   let job = null;
   let running = false;
@@ -33,15 +34,20 @@ export function mountPanel(root, deps) {
         </header>
         <aside class="practice">
           <strong>最佳实践</strong>
-          <p>让模型使用 skill <code>wechat-mp-markdown</code> 生成稿子。支持图片自动上传：写成 <code>![说明](images/01.png)</code>，或使用公网 https 图片地址，导入时会传到当前公众号。本地图片第一次选择所在文件夹。<a href="https://coderfather.com/wechat-markdown/#skill" target="_blank" rel="noreferrer">下载 skill</a></p>
+          <p>让模型使用 skill <code>wechat-mp-markdown</code> 生成稿子。图片写成 <code>![说明](images/01.png)</code>，和 Markdown 放在同一个目录里一起上传。只上传 Markdown 时不读取本地图片。公网 https 图片仍会上传。<a href="https://wechat-markdown.coderfather.com/#skill" target="_blank" rel="noreferrer">下载 skill</a></p>
         </aside>
-        <p class="lead">把 .md 拖进这个面板或编辑页，也可以在正文里 Ctrl+V。内容插到当前光标，不会自动发布。</p>
-        <label class="drop">选择 Markdown 文件<input class="file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden></label>
+        <p class="lead">把文章目录拖进这个面板或编辑页。目录里要有 .md 和 images。内容插到当前光标，不会自动发布。</p>
+        <label class="drop">选择文章目录<input class="dir" type="file" webkitdirectory multiple hidden></label>
+        <button class="md-only" type="button">只选择 Markdown，不导入本地图片</button>
+        <input class="file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden>
         <div class="actions"></div>
-        <ol class="log"></ol>
+        <section class="log-wrap">
+          <p class="log-title">导入进度</p>
+          <ol class="log"></ol>
+        </section>
         <footer>
           <button class="linkish" type="button" data-action="options">设置与激活</button>
-          <span>适配 2026-10-12</span>
+          <span>适配 2026-10-14b</span>
         </footer>
       </section>
     </div>`;
@@ -51,42 +57,64 @@ export function mountPanel(root, deps) {
   const actions = root.querySelector('.actions');
   const log = root.querySelector('.log');
   const fileInput = root.querySelector('.file');
+  const dirInput = root.querySelector('.dir');
 
   root.querySelector('.pill').addEventListener('click', () => setOpen(true));
   root.querySelector('[data-action="collapse"]').addEventListener('click', () => setOpen(false));
   root.querySelector('[data-action="options"]').addEventListener('click', () => deps.openOptions());
+  root.querySelector('.md-only').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0];
+    const entries = entriesFromFileList(fileInput.files);
     fileInput.value = '';
-    if (file) file.text().then((text) => guarded(() => begin(text)));
+    if (entries.length) importEntries(entries);
+  });
+  dirInput.addEventListener('change', () => {
+    const entries = entriesFromFileList(dirInput.files);
+    dirInput.value = '';
+    if (entries.length) importEntries(entries);
   });
   root.querySelector('.card').addEventListener('dragover', (event) => event.preventDefault());
   root.querySelector('.card').addEventListener('drop', (event) => {
     event.preventDefault();
-    const file = [...(event.dataTransfer?.files || [])].find((item) => /\.(md|markdown)$/i.test(item.name));
-    if (!file) {
-      push('请拖入 .md 文件', 'error');
-      return;
-    }
-    file.text().then((text) => guarded(() => begin(text)));
+    filesFromDataTransfer(event.dataTransfer)
+      .then((entries) => importEntries(entries))
+      .catch(() => push('没有读到拖入的目录', 'error'));
   });
 
   deps.onImportText?.((message) => {
     setOpen(true);
-    if (message.notice) push(message.notice, 'warn');
-    guarded(() => begin(message.text));
+    if (message.error) {
+      push(message.error, 'error');
+      return;
+    }
+    const folder = Array.isArray(message.files) ? folderFromEntries(message.files, { base: '' }) : null;
+    guarded(() => begin({ text: message.text, folder, notice: message.notice || '' }));
   });
   refreshPlan();
   render();
 
   return {
-    importText: (text) => guarded(() => begin(text)),
+    importText: (input) => guarded(() => begin(typeof input === 'string' ? { text: input } : input)),
   };
 
   function setOpen(open) {
     state.open = open;
-    deps.resize(open ? 'expanded' : 'collapsed');
+    syncSize();
     render();
+  }
+
+  function syncSize() {
+    if (!state.open) {
+      deps.resize('collapsed');
+      return;
+    }
+    const logMode =
+      state.lines.length > 0 ||
+      state.phase === 'running' ||
+      state.phase === 'error' ||
+      state.phase === 'done' ||
+      state.phase === 'need-remote';
+    deps.resize(logMode ? 'log' : 'expanded');
   }
 
   async function refreshPlan() {
@@ -98,7 +126,29 @@ export function mountPanel(root, deps) {
     render();
   }
 
-  async function begin(text) {
+  async function importEntries(entries) {
+    setOpen(true);
+    try {
+      const described = describeBundle(entries);
+      if (described.error) {
+        push(described.error, 'error');
+        return;
+      }
+      const markdown = entries.find((entry) => normalizeRelative(entry.relativePath) === described.markdownPath);
+      if (!markdown?.file) {
+        push('没有读到 Markdown 内容', 'error');
+        return;
+      }
+      const text = await markdown.file.text();
+      const folder = described.mode === 'directory' ? folderFromEntries(entries, described) : null;
+      await guarded(() => begin({ text, folder, notice: described.notice }));
+    } catch {
+      push('没有读到上传的目录', 'error');
+    }
+  }
+
+  async function begin(input) {
+    const source = typeof input === 'string' ? { text: input } : input;
     if (running) {
       push('正在导入上一篇，请稍候', 'warn');
       return;
@@ -109,13 +159,29 @@ export function mountPanel(root, deps) {
     state.phase = 'running';
     state.prompt = '';
     render();
+    if (source.notice) push(source.notice, 'warn');
+    const ping = await deps.pingEditor?.();
+    if (ping?.ok && ping.payload) {
+      const bits = [`扩展 v${chrome.runtime.getManifest().version}`, `适配 ${ping.payload.adapter || '?'}`];
+      bits.push(ping.payload.hasApi ? '官方 API 可用' : '官方 API 不可用');
+      bits.push(ping.payload.isEditor ? '已识别为编辑页' : '未识别为编辑页');
+      push(bits.join('，'), ping.payload.isEditor ? 'info' : 'warn');
+      if (ping.payload.imagePost) {
+        throw new Error(
+          '只支持「文章」图文编辑，不支持贴图。请从「新的创作 → 文章」打开草稿后再导入 Markdown。',
+        );
+      }
+    } else {
+      push(ping?.error || '当前页未检测到图文编辑器', 'warn');
+    }
     const entitlement = await deps.loadEntitlement();
     state.planText = formatPlan(entitlement);
-    const prepared = prepareImport(text, entitlement);
+    let prepared = prepareImport(source.text, entitlement);
+    if (!source.folder) prepared = omitLocalImages(prepared);
     if (!prepared.doc.blocks.length && !prepared.doc.frontmatter.title) {
       throw new Error('这份 Markdown 没有可导入的正文');
     }
-    job = { prepared };
+    job = { prepared, folder: source.folder || null, editorHints: ping?.payload || null };
     const skipped = prepared.skipped.length ? `，另有 ${prepared.skipped.length} 张不会导入` : '';
     push(`已解析，准备处理 ${prepared.accepted.length} 张图片${skipped}`);
     await continueJob();
@@ -130,21 +196,6 @@ export function mountPanel(root, deps) {
       render();
       return;
     }
-    if (prepared.needsFolder && !job.folder) {
-      const folder = await deps.getGrantedFolder();
-      if (folder) {
-        job.folder = folder;
-      } else {
-        state.phase = 'need-folder';
-        state.folderPrompt = await deps.hasRememberedFolder();
-        state.prompt = state.folderPrompt
-          ? '需要再确认一次文件夹权限。接下来会打开扩展自己的小窗口。'
-          : '文中有本地图片。接下来会打开扩展自己的小窗口，请在那里选择图片所在的文件夹。';
-        running = false;
-        render();
-        return;
-      }
-    }
     await finishJob();
   }
 
@@ -156,8 +207,8 @@ export function mountPanel(root, deps) {
     const pathIndex = job.folder ? indexRelativePaths(await job.folder.listRelativePaths()) : null;
     const resolved = await resolveImages(prepared.accepted, {
       readLocal: async (src) => {
-        if (!pathIndex || !job.folder) throw new Error('还没有授权图片文件夹');
-        const error = localLookupError(src, pathIndex);
+        if (!pathIndex || !job.folder) throw new Error('这次没有上传图片目录');
+        const error = localLookupError(src, pathIndex, '上传的目录');
         if (error) throw new Error(error);
         return job.folder.readFile(matchLocalPath(src, pathIndex).path);
       },
@@ -180,11 +231,17 @@ export function mountPanel(root, deps) {
     const failed =
       prepared.skipped.length + Object.values(resolved.results).filter((item) => item.error).length;
     push('正在写入编辑器');
+    const useDomFocus = !job.editorHints?.hasApi;
+    if (useDomFocus) {
+      const focus = await deps.focusEditor?.();
+      if (focus && !focus.ok) push(focus.error || '未能聚焦正文编辑区', 'warn');
+    }
     const inserted = await deps.insertArticle(buildArticle(prepared, results));
     if (!inserted?.ok) throw new Error(inserted?.error || '写入编辑器失败');
     state.phase = 'done';
     push(successText(inserted, failed), 'ok');
     running = false;
+    await deps.saveImportLog?.(state.lines);
     render();
   }
 
@@ -195,6 +252,7 @@ export function mountPanel(root, deps) {
       state.phase = 'error';
       push(error instanceof Error ? error.message : '导入失败', 'error');
       running = false;
+      await deps.saveImportLog?.(state.lines);
       render();
     }
   }
@@ -217,6 +275,7 @@ export function mountPanel(root, deps) {
 
   function render() {
     shell.classList.toggle('collapsed', !state.open);
+    shell.classList.toggle('focus-log', state.lines.length > 0);
     plan.textContent = state.planText;
     log.replaceChildren(
       ...state.lines.map((line) => {
@@ -228,38 +287,16 @@ export function mountPanel(root, deps) {
     );
     actions.replaceChildren();
     if (state.phase === 'need-remote') actions.append(note(state.prompt), actionButton('允许下载网络图片', allowRemote), actionButton('跳过网络图片', skipRemote, 'secondary'));
-    if (state.phase === 'need-folder') {
-      actions.append(
-        note(state.prompt),
-        actionButton(state.folderPrompt ? '允许读取图片文件夹' : '选择图片文件夹', state.folderPrompt ? allowFolder : pickFolder),
-      );
-    }
+    syncSize();
+    requestAnimationFrame(() => {
+      log.scrollTop = log.scrollHeight;
+    });
   }
 
   function allowRemote() {
     guarded(async () => {
       const granted = await deps.requestOrigins(job.prepared.remoteOrigins);
       if (!granted) dropRemoteImages();
-      running = true;
-      await continueJob();
-    });
-  }
-
-  function pickFolder() {
-    guarded(async () => {
-      const folder = await deps.pickFolder();
-      if (!folder) return;
-      job.folder = folder;
-      running = true;
-      await continueJob();
-    });
-  }
-
-  function allowFolder() {
-    guarded(async () => {
-      const folder = await deps.regrantFolder();
-      if (!folder) throw new Error('没有获得文件夹读取权限');
-      job.folder = folder;
       running = true;
       await continueJob();
     });
@@ -334,7 +371,7 @@ function bindFolder(handle) {
     },
     async readFile(rel) {
       const fileHandle = (await files()).get(rel);
-      if (!fileHandle) throw new Error('在已授权的文件夹里没有找到这张图片');
+      if (!fileHandle) throw new Error(`在已授权的文件夹里没有找到 ${rel}`);
       const file = await fileHandle.getFile();
       return { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
     },
@@ -413,6 +450,25 @@ function createChromeDeps() {
     },
     insertArticle(article) {
       return requestEditor(port, { type: 'insert', article }, 'insert-result');
+    },
+    pingEditor() {
+      return requestEditor(port, { type: 'ping-editor' }, 'ping-editor-result');
+    },
+    focusEditor() {
+      return requestEditor(port, { type: 'focus-body' }, 'focus-body-result');
+    },
+    async saveImportLog(lines) {
+      const text = lines.map((line) => line.text).join('\n');
+      const response = await chrome.runtime.sendMessage({ type: 'save-import-log', text }).catch(() => null);
+      if (response?.ok) return;
+      const at = Date.now();
+      await chrome.storage.local.set({ lastImportLog: text, lastImportAt: at });
+      const { downloadImportLogFile, formatImportLogBody, notifyLocalAgent } = await import(
+        chrome.runtime.getURL('src/lib/import-log.js'),
+      );
+      const body = formatImportLogBody(text, at);
+      await notifyLocalAgent(body);
+      await downloadImportLogFile(body).catch(() => {});
     },
     resize(mode) {
       port.postMessage({ type: 'resize', mode });

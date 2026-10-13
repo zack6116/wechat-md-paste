@@ -1,3 +1,4 @@
+import { folderFromEntries } from '../src/lib/bundle.js';
 import { mountPanel } from '../src/panel/panel.js';
 
 const host = document.querySelector('#panel-root');
@@ -58,8 +59,15 @@ const panel = mountPanel(host, {
 
 document.querySelector('#sample').addEventListener('click', async () => {
   const text = await fetch('/examples/sample.md').then((response) => response.text());
+  const image = await fetch('/examples/images/demo.png');
+  const folder = image.ok
+    ? folderFromEntries(
+        [{ relativePath: 'images/demo.png', name: 'demo.png', bytes: new Uint8Array(await image.arrayBuffer()) }],
+        { base: '' },
+      )
+    : null;
   status.textContent = '正在导入示例';
-  await panel.importText(text);
+  await panel.importText({ text, folder });
 });
 
 document.querySelector('#remote').addEventListener('click', () => {

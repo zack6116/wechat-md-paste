@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "公众号 MD Paste",
-  "version": "1.0.0",
+  "version": "1.0.11",
   "description": "在公众号图文编辑页导入 Markdown，图片在本地处理后写入草稿，不会自动发布。",
-  "permissions": ["storage"],
-  "host_permissions": ["https://mp.weixin.qq.com/*"],
+  "permissions": ["storage", "scripting", "downloads"],
+  "host_permissions": ["https://mp.weixin.qq.com/*", "http://127.0.0.1:9765/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "src/background.js",
@@ -12,7 +12,7 @@
   },
   "action": {
     "default_title": "公众号 MD Paste",
-    "default_popup": "src/options/options.html",
+    "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -45,10 +45,25 @@
     {
       "resources": [
         "src/panel/panel.html",
+        "src/panel/panel.js",
+        "src/panel/panel.css",
+        "src/panel/folder-store.js",
         "src/content/bridge.js",
-        "src/lib/markdown.js",
+        "src/lib/article.js",
+        "src/lib/bundle.js",
+        "src/lib/bytes.js",
+        "src/lib/channel.js",
         "src/lib/constants.js",
-        "src/lib/channel.js"
+        "src/lib/drop-files.js",
+        "src/lib/entitlement.js",
+        "src/lib/import-log.js",
+        "src/lib/images.js",
+        "src/lib/license.js",
+        "src/lib/markdown.js",
+        "src/lib/placement.js",
+        "src/lib/render.js",
+        "src/lib/resolve-images.js",
+        "src/lib/urls.js"
       ],
       "matches": ["https://mp.weixin.qq.com/*"]
     }

@@ -48,9 +48,11 @@ async function resolveOne(item, { readLocal, fetchRemote, upload, warnings }) {
   return url;
 }
 
-export function localLookupError(src, index) {
+export function localLookupError(src, index, place = '已授权的文件夹') {
   const matched = matchLocalPath(src, index);
   if (matched.path) return null;
-  if (matched.ambiguous) return '找到多个同名图片，请在 Markdown 里写成相对路径';
-  return '在已授权的文件夹里没有找到这张图片';
+  const name = String(src || '').trim().split(/[\\/]/).pop() || '这张图片';
+  if (matched.ambiguous) return `找到多个同名图片（${name}），请在 Markdown 里写成相对路径`;
+  if (!index.byPath.size) return `${place}里没有图片文件，找不到 ${name}`;
+  return `在${place}里没有找到 ${name}`;
 }

@@ -1,11 +1,13 @@
 import { HARD_IMAGE_BYTES } from './lib/constants.js';
+import { downloadImportLogFile, formatImportLogBody, notifyLocalAgent } from './lib/import-log.js';
 import { bytesToBase64 } from './lib/bytes.js';
 import { inspectRemoteImageUrl } from './lib/urls.js';
 
 const channels = new Map();
 
-chrome.runtime.onInstalled.addListener(() => {
-  ensureTrial();
+chrome.runtime.onInstalled.addListener(async () => {
+  await ensureTrial();
+  await refreshWechatTabs();
 });
 chrome.runtime.onStartup.addListener(() => {
   ensureTrial();
@@ -45,6 +47,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     openFolderPicker(message.mode).then(sendResponse);
     return true;
   }
+  if (message?.type === 'save-import-log') {
+    saveImportLog(message.text || '').then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
+    return true;
+  }
   if (message?.type !== 'fetch-image') return false;
   const senderUrl = sender.url || '';
   const fromExtension = senderUrl.startsWith(chrome.runtime.getURL(''));
@@ -73,6 +79,31 @@ async function ensureTrial() {
   if (!data.trialStartedAt) {
     await chrome.storage.local.set({ trialStartedAt: Date.now() });
   }
+}
+
+async function saveImportLog(text) {
+  const at = Date.now();
+  const body = formatImportLogBody(text, at);
+  await chrome.storage.local.set({ lastImportLog: text, lastImportAt: at });
+  await notifyLocalAgent(body);
+  await downloadImportLogFile(body);
+}
+
+async function refreshWechatTabs() {
+  const tabs = await chrome.tabs.query({ url: 'https://mp.weixin.qq.com/*' });
+  await Promise.all(
+    tabs.map(async (tab) => {
+      if (!tab.id) return;
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['src/content/loader.js'],
+        });
+      } catch {
+        // The tab may still be loading or the page may block injection.
+      }
+    }),
+  );
 }
 
 async function fetchRemoteImage(rawUrl) {

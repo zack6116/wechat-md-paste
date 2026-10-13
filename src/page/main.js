@@ -1,12 +1,13 @@
-// 公众号编辑器改版时，优先改本文件里的选择器。适配版本：2026-10-12
-// 正文写入顺序：官方 __MP_Editor_JSAPI__，旧编辑器再退回正文节点。
+// 公众号编辑器改版时，优先改本文件里的选择器。适配版本：2026-10-14b
+// 正文写入顺序：官方 __MP_Editor_JSAPI__（含同源 iframe），再退回正文节点。
 // 不点击发表、群发或保存。封面只走官方接口。
 (function initWechatMdPasteMain() {
   if (window.__WMP_MAIN__) return;
   window.__WMP_MAIN__ = true;
 
   const SOURCE = 'wechat-md-paste';
-  const ADAPTER_VERSION = '2026-10-12';
+  const ADAPTER_VERSION = '2026-10-14e';
+  let cachedBodyEditor = null;
   const TITLE_SELECTORS = [
     '#title',
     '#js_appmsg_title',
@@ -15,12 +16,7 @@
     '.js_title_input textarea',
     '#js_title_main textarea',
   ];
-  const EDITABLE_SELECTORS = [
-    '.ProseMirror',
-    '#ueditor_0',
-    '#js_editor_area [contenteditable="true"]',
-    '.rich_media_content',
-  ];
+  const SURFACE_SELECTOR = '.ProseMirror, #ueditor_0, .rich_media_content, [contenteditable]';
 
   window.addEventListener('message', (event) => {
     if (event.source !== window) return;
@@ -34,6 +30,7 @@
       let payload;
       if (data.type === 'ping') payload = ping();
       else if (data.type === 'upload-image') payload = await uploadImage(data.payload || {});
+      else if (data.type === 'focus-body') payload = focusBody();
       else if (data.type === 'insert-html') payload = await insertHtml(data.payload?.html);
       else if (data.type === 'set-title') payload = setTitle(data.payload?.title);
       else if (data.type === 'set-cover') payload = await setCover(data.payload?.url);
@@ -45,70 +42,290 @@
   }
 
   function ping() {
+    const api = editorApi();
     return {
       adapter: ADAPTER_VERSION,
-      hasApi: !!window.__MP_Editor_JSAPI__,
+      hasApi: !!api,
+      imagePost: isImagePostEditor(),
       isEditor:
-        !!window.__MP_Editor_JSAPI__ ||
-        !!document.querySelector('.ProseMirror, #ueditor_0, #js_appmsg_title, textarea#title'),
+        !!api ||
+        editorDocuments().some((doc) => {
+          try {
+            return !!doc.querySelector('.ProseMirror, #ueditor_0, #js_appmsg_title, textarea#title');
+          } catch {
+            return false;
+          }
+        }),
     };
   }
 
   async function insertHtml(html) {
     if (!html) throw new Error('没有可插入的内容');
-    if (window.__MP_Editor_JSAPI__) {
-      const ready = await invoke('mp_editor_get_isready');
-      if (ready?.isNew) {
-        if (ready.isReady === false) throw new Error('编辑器还在加载，请等正文区域出现后再导入');
-        await invoke('mp_editor_insert_html', { html, isSelect: false });
-        return { via: 'mp_editor_insert_html' };
+    if (isImagePostEditor()) {
+      throw new Error('只支持「文章」图文，不支持贴图编辑页（createType=8）。');
+    }
+    focusBody();
+    const viaApi = await insertViaApi(html);
+    if (viaApi) return viaApi;
+    return insertViaDom(html);
+  }
+
+  function focusBody() {
+    if (isImagePostEditor()) {
+      throw new Error('只支持「文章」图文，不支持贴图编辑页（createType=8）。');
+    }
+    if (editorApi()) return { focused: true, via: 'mp_editor_api' };
+    const target = findEditable();
+    if (!target) throw new Error('找不到正文编辑区。请先在正文里点一下，或刷新编辑页后再导入。');
+    focusElement(target);
+    return { focused: true };
+  }
+
+  function focusElement(target) {
+    target.focus();
+    const doc = target.ownerDocument;
+    const view = doc.defaultView;
+    if (view?.getSelection && doc.createRange) {
+      const range = doc.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      const selection = view.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    target.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+  }
+
+  async function insertViaApi(html) {
+    if (!editorApi()) return null;
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      try {
+        const ready = await invoke('mp_editor_get_isready');
+        if (ready?.isNew && ready?.isReady === false) {
+          await sleep(350);
+          continue;
+        }
+        if (ready?.isNew !== false) {
+          await invoke('mp_editor_insert_html', { html, isSelect: false });
+          return { via: 'mp_editor_insert_html' };
+        }
+        break;
+      } catch {
+        await sleep(350);
       }
     }
-    return insertViaDom(html);
+    try {
+      await invoke('mp_editor_insert_html', { html, isSelect: false });
+      return { via: 'mp_editor_insert_html' };
+    } catch {
+      // Fall through to set_content or DOM insertion.
+    }
+    try {
+      const current = await invoke('mp_editor_get_content');
+      const merged = `${current?.content || ''}${html}`;
+      await invoke('mp_editor_set_content', { content: merged });
+      return { via: 'mp_editor_set_content' };
+    } catch {
+      return null;
+    }
   }
 
   function insertViaDom(html) {
     const target = findEditable();
     if (!target) {
-      throw new Error('找不到正文编辑区。公众号改版后，请更新 src/page/main.js 里的选择器。');
+      throw new Error('找不到正文编辑区。请确认光标在正文里，或刷新编辑页后再导入。');
     }
-    target.focus();
+    focusElement(target);
+    return insertHtmlIntoElement(target, html);
+  }
+
+  function insertHtmlIntoElement(target, html) {
     const doc = target.ownerDocument;
     if (doc.execCommand('insertHTML', false, html)) return { via: 'execCommand' };
     target.insertAdjacentHTML('beforeend', html);
     target.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    target.dispatchEvent(new InputEvent('change', { bubbles: true }));
     return { via: 'insertAdjacentHTML' };
   }
 
   function findEditable() {
-    for (const selector of EDITABLE_SELECTORS) {
-      const element = document.querySelector(selector);
-      if (!element) continue;
-      if (element.tagName === 'IFRAME') {
-        const body = element.contentDocument?.body;
-        if (body) return body;
-      }
-      if (element.isContentEditable || element.getAttribute('contenteditable') === 'true') return element;
+    if (cachedBodyEditor?.isConnected && isEditableSurface(cachedBodyEditor) && !isTitleSurface(cachedBodyEditor)) {
+      return cachedBodyEditor;
     }
-    return [...document.querySelectorAll('[contenteditable="true"]')].find(
-      (element) => !/title/i.test(`${element.id} ${element.className}`),
-    );
+    const target = findEditableUncached();
+    cachedBodyEditor = target;
+    return target;
+  }
+
+  function findEditableUncached() {
+    const mirrors = queryEditors('.ProseMirror').filter(isEditableSurface);
+    const bodyMirrors = mirrors.filter((element) => !isTitleSurface(element));
+    const picked = pickBodyMirror(bodyMirrors);
+    if (picked) return picked;
+
+    const found = [];
+    for (const element of queryEditors(SURFACE_SELECTOR)) considerSurface(element, found);
+    found.sort((a, b) => surfaceArea(b) - surfaceArea(a));
+    return found.find((element) => !isTitleSurface(element)) || null;
+  }
+
+  function pickBodyMirror(bodyMirrors) {
+    if (!bodyMirrors.length) return null;
+    if (bodyMirrors.length === 1) return bodyMirrors[0];
+    const ordered = [...bodyMirrors].sort((a, b) => {
+      const pos = a.compareDocumentPosition(b);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+    return ordered[1] || ordered[0];
+  }
+
+  function isImagePostEditor() {
+    return /(?:^|[?&])createType=8(?:&|$)/.test(location.search);
+  }
+
+  function considerSurface(element, found) {
+    if (!element || found.includes(element)) return;
+    if (element.tagName === 'IFRAME' || element.tagName === 'FRAME') {
+      if (element.id === 'wmp-panel') return;
+      try {
+        const body = element.contentDocument?.body;
+        if (body && (isEditableSurface(body) || /ueditor/i.test(element.id || ''))) found.push(body);
+      } catch {
+        // Cross-origin frames are not the editor body we can write.
+      }
+      return;
+    }
+    if (isEditableSurface(element)) found.push(element);
+  }
+
+  function isEditableSurface(element) {
+    if (!element || element.nodeType !== 1) return false;
+    if (element.classList?.contains('ProseMirror')) return true;
+    const flag = String(element.getAttribute?.('contenteditable') || '').toLowerCase();
+    if (flag === 'false') return false;
+    if (element.isContentEditable) return true;
+    if (flag === 'true' || flag === 'plaintext-only') return true;
+    return element.hasAttribute?.('contenteditable') && flag === '';
+  }
+
+  function isTitleSurface(element) {
+    return [element, element.parentElement].filter(Boolean).some((node) => /title|标题/i.test(surfaceText(node)));
+  }
+
+  function surfaceText(element) {
+    const className = typeof element.className === 'string' ? element.className : '';
+    return [
+      element.id,
+      className,
+      element.getAttribute?.('data-placeholder') || '',
+      element.getAttribute?.('placeholder') || '',
+      element.getAttribute?.('aria-label') || '',
+    ].join(' ');
+  }
+
+  function surfaceArea(element) {
+    const rect = element.getBoundingClientRect?.();
+    if (!rect) return 0;
+    return Math.max(0, rect.width) * Math.max(0, rect.height);
+  }
+
+  function editorDocuments() {
+    const docs = [];
+    const visit = (doc, depth) => {
+      if (!doc?.querySelectorAll || docs.includes(doc) || depth > 10) return;
+      docs.push(doc);
+      for (const frame of doc.querySelectorAll('iframe, frame')) {
+        if (frame.id === 'wmp-panel') continue;
+        try {
+          if (!frame.contentDocument) continue;
+          visit(frame.contentDocument, depth + 1);
+        } catch {
+          // Cross-origin frames are not part of this editor page.
+        }
+      }
+    };
+    visit(document, 0);
+    return docs;
+  }
+
+  function shadowRoots() {
+    const roots = [];
+    const visit = (root) => {
+      let elements = [];
+      try {
+        elements = root.querySelectorAll('*');
+      } catch {
+        return;
+      }
+      for (const element of elements) {
+        if (!element.shadowRoot || roots.includes(element.shadowRoot)) continue;
+        roots.push(element.shadowRoot);
+        visit(element.shadowRoot);
+      }
+    };
+    for (const doc of editorDocuments()) visit(doc);
+    return roots;
+  }
+
+  function queryEditors(selector) {
+    const result = [];
+    const seen = new Set();
+    const add = (nodes) => {
+      for (const element of nodes) {
+        if (seen.has(element)) continue;
+        seen.add(element);
+        result.push(element);
+      }
+    };
+    for (const root of [...editorDocuments(), ...shadowRoots()]) {
+      try {
+        add(root.querySelectorAll(selector));
+      } catch {
+        // A frame can detach while the page is still loading.
+      }
+    }
+    return result;
+  }
+
+  function editorApi() {
+    const seen = new Set();
+    const pick = (win) => {
+      if (!win || seen.has(win)) return null;
+      seen.add(win);
+      try {
+        const api = win.__MP_Editor_JSAPI__;
+        if (api?.invoke) return api;
+        if (win.parent && win.parent !== win) return pick(win.parent);
+      } catch {
+        // Cross-origin parent frames cannot be read.
+      }
+      return null;
+    };
+    const topApi = pick(window);
+    if (topApi) return topApi;
+    for (const doc of editorDocuments()) {
+      const api = doc.defaultView?.__MP_Editor_JSAPI__;
+      if (api?.invoke) return api;
+    }
+    return null;
   }
 
   function setTitle(title) {
     const text = String(title || '').trim().slice(0, 64);
     if (!text) return { updated: false, reason: 'empty' };
     for (const selector of TITLE_SELECTORS) {
-      const element = document.querySelector(selector);
-      if (!element || (element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA')) continue;
+      const element = queryEditors(selector).find((node) => node.tagName === 'INPUT' || node.tagName === 'TEXTAREA');
+      if (!element) continue;
       if (String(element.value || '').trim()) return { updated: false, reason: 'exists' };
       element.value = text;
       element.dispatchEvent(new Event('input', { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
       return { updated: true };
     }
-    const editable = [...document.querySelectorAll('[contenteditable="true"]')].find((element) =>
-      /title/i.test(`${element.id} ${element.className} ${element.getAttribute('data-placeholder') || ''}`),
+    const editable = queryEditors('[contenteditable], .ProseMirror').find(
+      (element) => isEditableSurface(element) && isTitleSurface(element),
     );
     if (!editable) return { updated: false, reason: 'missing' };
     if (editable.textContent.trim()) return { updated: false, reason: 'exists' };
@@ -120,13 +337,13 @@
   async function setCover(url) {
     if (!/^https?:\/\//i.test(url || '')) return { updated: false, reason: 'invalid' };
     if (coverAlreadySet()) return { updated: false, reason: 'exists' };
-    if (!window.__MP_Editor_JSAPI__) return { updated: false, reason: 'no-api' };
+    if (!editorApi()) return { updated: false, reason: 'no-api' };
     await invoke('mp_editor_change_cover', { oriImgUrl: url });
     return { updated: true };
   }
 
   function coverAlreadySet() {
-    const area = document.querySelector('#js_cover_area, .js_cover_area_inner, #js_cover_preview');
+    const area = queryEditors('#js_cover_area, .js_cover_area_inner, #js_cover_preview')[0];
     if (!area) return false;
     if (/mmbiz\.qpic\.cn|background-image\s*:\s*url\(/i.test(area.innerHTML || '')) return true;
     const image = area.querySelector('img');
@@ -192,9 +409,13 @@
     return { ticket: '', user: '' };
   }
 
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   function invoke(apiName, apiParam) {
     return new Promise((resolve, reject) => {
-      const api = window.__MP_Editor_JSAPI__;
+      const api = editorApi();
       if (!api?.invoke) {
         reject(new Error('当前页面没有公众号编辑器接口'));
         return;
